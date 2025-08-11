@@ -1,14 +1,15 @@
-import {Schema, model} from 'mongoose';
-
-const statusTypes : string[] = ["sent" , "delivered" , "read"];
-
-const userSchema = new Schema({
-    wa_id: { // WhatsApp unique ID
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MessageModel = exports.UserModel = void 0;
+const mongoose_1 = require("mongoose");
+const statusTypes = ["sent", "delivered", "read"];
+const userSchema = new mongoose_1.Schema({
+    wa_id: {
         type: String,
         required: true,
         unique: true
     },
-    name: { // Profile name from webhook
+    name: {
         type: String,
         required: false
     },
@@ -16,7 +17,7 @@ const userSchema = new Schema({
         type: String,
         required: false
     },
-    profilePicUrl: { 
+    profilePicUrl: {
         type: String
     },
     createdAt: {
@@ -24,20 +25,19 @@ const userSchema = new Schema({
         default: Date.now
     }
 }, { timestamps: true });
-
-const messageSchema = new Schema({
-    waMessageId: { // id from webhook
+const messageSchema = new mongoose_1.Schema({
+    waMessageId: {
         type: String,
         required: true,
         unique: true
     },
     sender: {
-        type: Schema.Types.ObjectId,
+        type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
     receiver: {
-        type: Schema.Types.ObjectId,
+        type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
@@ -50,7 +50,7 @@ const messageSchema = new Schema({
         enum: ["text", "image", "video", "document", "audio"],
         default: "text"
     },
-    timestamp: { // when the message was sent
+    timestamp: {
         type: Date,
         required: true
     },
@@ -60,8 +60,8 @@ const messageSchema = new Schema({
         default: "sent"
     }
 }, { timestamps: true });
-
-const UserModel = model('User', userSchema);
-const MessageModel = model('Processed_Message', messageSchema);
-
-export {UserModel, MessageModel};
+const UserModel = (0, mongoose_1.model)('User', userSchema);
+exports.UserModel = UserModel;
+const MessageModel = (0, mongoose_1.model)('Processed_Message', messageSchema);
+exports.MessageModel = MessageModel;
+//# sourceMappingURL=schema.js.map
