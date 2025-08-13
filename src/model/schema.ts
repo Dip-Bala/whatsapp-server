@@ -3,18 +3,18 @@ import {Schema, model} from 'mongoose';
 const statusTypes : string[] = ["sent" , "delivered" , "read"];
 
 const userSchema = new Schema({
-    wa_id: { // WhatsApp unique ID
-        type: String,
-        required: true,
-        unique: true
-    },
+    // wa_id: {
+    //     type: String,
+    //     required: true,
+    //     unique: true
+    // },
     name: { // Profile name from webhook
         type: String,
         required: false
     },
-    phoneNumber: {
+    email: {
         type: String,
-        required: false
+        required: true
     },
     profilePicUrl: { 
         type: String

@@ -4,18 +4,18 @@ exports.MessageModel = exports.UserModel = void 0;
 const mongoose_1 = require("mongoose");
 const statusTypes = ["sent", "delivered", "read"];
 const userSchema = new mongoose_1.Schema({
-    wa_id: {
-        type: String,
-        required: true,
-        unique: true
-    },
+    // wa_id: {
+    //     type: String,
+    //     required: true,
+    //     unique: true
+    // },
     name: {
         type: String,
         required: false
     },
-    phoneNumber: {
+    email: {
         type: String,
-        required: false
+        required: true
     },
     profilePicUrl: {
         type: String

@@ -6,15 +6,45 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const schema_1 = require("./model/schema");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
-app.get('/', (req, res) => {
-    res.send("Welcome to Whatsapp");
+app.use((0, cors_1.default)());
+function generateToken(userId) {
+    return jsonwebtoken_1.default.sign({ id: userId }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+    });
+}
+app.post('/test', (req, res) => {
+    const payload = req.body;
+    res.send(`hi ${payload.name}`);
 });
-app.post('/messages', async (req, res) => {
-    const message = req.body;
+app.post('/login', async (req, res) => {
+    console.log("login under process");
+    try {
+        const { name, email } = req.body;
+        if (!name || !email) {
+            return res.status(400).json({ error: "Name and email are required" });
+        }
+        let user = await schema_1.UserModel.findOne({ email });
+        // If user does not exist → create a new one
+        if (!user) {
+            console.log("User does not exist");
+            user = await schema_1.UserModel.create({ name, email });
+            const token = generateToken(user._id.toString());
+            return res.status(201).json({ message: "User registered", token });
+        }
+        // If user exists, always send a fresh token
+        const token = generateToken(user._id.toString());
+        return res.status(200).json({ message: "Login successful", token });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Server error" });
+    }
 });
 app.post('/webhook', async (req, res) => {
     try {
@@ -65,11 +95,13 @@ async function main() {
     try {
         await mongoose_1.default.connect(process.env.DB_URL);
         console.log("Database Connected");
+        app.listen(process.env.PORT || 8080, () => {
+            console.log(`Server running on port ${process.env.PORT || 8080}`);
+        });
     }
     catch (e) {
-        console.log("Could Not connected to Database");
+        console.log("Could Not connect to Database");
     }
-    app.listen(process.env.PORT);
 }
 main();
 //# sourceMappingURL=index.js.map
