@@ -1,37 +1,37 @@
-import {Schema, model} from 'mongoose';
+import { Schema, model } from 'mongoose';
 
-const messageStatusTypes : string[] = ["sent" , "delivered" , "read"];
-const statusType : string[] = ["offline", "online"];
+const messageStatusTypes: string[] = ["sent", "delivered", "read"];
+const statusType: string[] = ["offline", "online"];
 
+// ===== User Schema =====
 const userSchema = new Schema({
-    name: { 
-        type: String,
-        required: false
-    },
-    email: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    profilePicUrl: { 
-        type: String
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    status : {
-        type: String,
-        enum: statusType
-    }
+  name: { 
+    type: String,
+    required: false
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  profilePicUrl: { 
+    type: String
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  status : {
+    type: String,
+    enum: statusType
+  }
 }, { timestamps: true });
 
-
-// Contact Schema
+// ===== Contact Schema =====
 const contactSchema = new Schema(
   {
     owner: {
-      type: Schema.Types.ObjectId, // The logged-in user who owns this contact list
+      type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
@@ -51,7 +51,7 @@ const contactSchema = new Schema(
       default: false,
     },
     linkedUser: {
-      type: Schema.Types.ObjectId, // If the contact is also a WhatsApp user
+      type: Schema.Types.ObjectId,
       ref: 'User',
       default: null,
     },
@@ -63,53 +63,11 @@ const contactSchema = new Schema(
   { timestamps: true }
 );
 
-const messageSchema = new Schema({
-    // waMessageId: { // id from webhook
-    //     type: String,
-    //     required: true,
-    //     unique: true
-    // },
-    sender: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    receiver: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    text: {
-        type: String,
-        required: false // could be media instead
-    },
-    type: {
-        type: String,
-        enum: ["text", "image", "video", "document", "audio"],
-        default: "text"
-    },
-    timestamp: { // when the message was sent
-        type: Date,
-        required: true
-    },
-    status: {
-        type: String,
-        enum: messageStatusTypes,
-        default: "sent"
-    }
-}, { timestamps: true });
-
 contactSchema.pre('save', async function (next) {
-  const Contact = this.constructor as any;
   const User = model('User');
 
-  // If phoneNumber or email matches a registered user, link them
   if (this.email) {
-    const matchedUser = await User.findOne({
-      $or: [
-        { email: this.email }
-      ],
-    });
+    const matchedUser = await User.findOne({ email: this.email });
 
     if (matchedUser) {
       this.linkedUser = matchedUser._id;
@@ -123,10 +81,41 @@ contactSchema.pre('save', async function (next) {
   next();
 });
 
+// ===== Message Schema =====
+const messageSchema = new Schema({
+  sender: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  receiver: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  text: {
+    type: String,
+    required: false
+  },
+  type: {
+    type: String,
+    enum: ["text", "image", "video", "document", "audio"],
+    default: "text"
+  },
+  timestamp: {
+    type: Date,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: messageStatusTypes,
+    default: "sent"
+  }
+}, { timestamps: true });
 
-
+// ===== Models =====
 const UserModel = model('User', userSchema);
-const MessageModel = model('Processed_Message', messageSchema);
+const MessageModel = model('Processed_Message', messageSchema); // original name restored
 const ContactModel = model('Contact', contactSchema);
 
-export {UserModel, ContactModel, MessageModel};
+export { UserModel, ContactModel, MessageModel };

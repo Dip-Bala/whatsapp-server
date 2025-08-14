@@ -15,17 +15,12 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
-// Create HTTP server for both Express & WS
 const server = (0, http_1.createServer)(app);
 const wss = new ws_1.WebSocketServer({ server });
-// Map of online users: userId → ws connection
 const onlineUsers = new Map();
 function generateToken(userId) {
-    return jsonwebtoken_1.default.sign({ id: userId }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-    });
+    return jsonwebtoken_1.default.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 }
-// Middleware to verify token for REST API
 function verifyToken(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader)
@@ -38,126 +33,214 @@ function verifyToken(req, res, next) {
         req.user = decoded;
         next();
     }
-    catch (err) {
+    catch {
         return res.status(401).json({ error: "Invalid or expired token" });
     }
 }
+function sendJSON(ws, data) {
+    if (ws.readyState === ws_1.WebSocket.OPEN)
+        ws.send(JSON.stringify(data));
+}
 // ===== REST API =====
-app.post("/test", (req, res) => {
-    const payload = req.body;
-    res.send(`hi ${payload.name}`);
-});
 app.post("/login", async (req, res) => {
-    console.log("login under process");
-    try {
-        const { name, email } = req.body;
-        if (!name || !email) {
-            return res.status(400).json({ error: "Name and email are required" });
-        }
-        let user = await schema_1.UserModel.findOne({ email });
-        if (!user) {
-            console.log("User does not exist, creating new");
-            user = await schema_1.UserModel.create({ name, email });
-            const token = generateToken(user._id.toString());
-            return res.status(201).json({ message: "User registered", token, user });
-        }
-        const token = generateToken(user._id.toString());
-        return res.status(200).json({ message: "Login successful", token, user });
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Server error" });
-    }
+    const { name, email } = req.body;
+    if (!name || !email)
+        return res.status(400).json({ error: "Name and email are required" });
+    let user = await schema_1.UserModel.findOne({ email });
+    if (!user)
+        user = await schema_1.UserModel.create({ name, email });
+    const token = generateToken(user._id.toString());
+    return res.status(200).json({ message: "Login successful", token, user });
 });
 app.get("/contact", verifyToken, async (req, res) => {
-    console.log("requested for contacts");
-    try {
-        const contacts = await schema_1.ContactModel.find({ owner: req.user.id }).sort({
-            isOnWhatsApp: -1,
-            name: 1,
-        });
-        res.json(contacts);
-    }
-    catch (err) {
-        res.status(500).json({ error: "Failed to fetch contacts" });
-    }
+    const contacts = await schema_1.ContactModel.find({ owner: req.user.id })
+        .sort({ isOnWhatsApp: -1, name: 1 });
+    res.json(contacts);
 });
 app.post("/contact", verifyToken, async (req, res) => {
-    try {
-        const { name, email } = req.body;
-        if (!name || !email) {
-            return res.status(400).json({ error: "Name and email are required" });
-        }
-        const waUser = await schema_1.UserModel.findOne({ email });
-        const contactData = {
-            owner: req.user.id,
-            name,
-            email,
-            isOnWhatsApp: !!waUser,
-        };
-        if (waUser) {
-            contactData.profilePicUrl = waUser.profilePicUrl || "";
-            contactData.status = waUser.status || "offline";
-        }
-        const contact = await schema_1.ContactModel.create(contactData);
-        res.status(201).json(contact);
-    }
-    catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to add contact" });
-    }
+    const { name, email } = req.body;
+    if (!name || !email)
+        return res.status(400).json({ error: "Name and email are required" });
+    const waUser = await schema_1.UserModel.findOne({ email });
+    const contactData = {
+        owner: req.user.id,
+        name,
+        email,
+        isOnWhatsApp: !!waUser,
+        profilePicUrl: waUser?.profilePicUrl || "",
+        status: waUser?.status || "offline"
+    };
+    const contact = await schema_1.ContactModel.create(contactData);
+    res.status(201).json(contact);
 });
-// ===== WS Server =====
-function sendJSON(ws, data) {
-    ws.send(JSON.stringify(data));
-}
+app.get("/chats", verifyToken, async (req, res) => {
+    const userId = req.user.id;
+    const chats = await schema_1.MessageModel.aggregate([
+        {
+            $match: {
+                $or: [
+                    { sender: new mongoose_1.default.Types.ObjectId(userId) },
+                    { receiver: new mongoose_1.default.Types.ObjectId(userId) }
+                ]
+            }
+        },
+        { $sort: { timestamp: -1 } },
+        {
+            $group: {
+                _id: {
+                    $cond: [
+                        { $eq: ["$sender", new mongoose_1.default.Types.ObjectId(userId)] },
+                        "$receiver",
+                        "$sender",
+                    ],
+                },
+                lastMessage: { $first: "$$ROOT" },
+                unreadCount: {
+                    $sum: {
+                        $cond: [
+                            {
+                                $and: [
+                                    { $eq: ["$receiver", new mongoose_1.default.Types.ObjectId(userId)] },
+                                    { $ne: ["$status", "read"] },
+                                ],
+                            },
+                            1,
+                            0,
+                        ],
+                    },
+                },
+            },
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "_id",
+                foreignField: "_id",
+                as: "participant",
+            },
+        },
+        { $unwind: "$participant" },
+        {
+            $project: {
+                _id: 0,
+                chatId: "$_id",
+                participant: {
+                    _id: "$participant._id",
+                    name: "$participant.name",
+                    email: "$participant.email",
+                    profilePicUrl: "$participant.profilePicUrl",
+                    status: "$participant.status",
+                },
+                lastMessage: {
+                    text: "$lastMessage.text",
+                    timestamp: "$lastMessage.timestamp",
+                    status: "$lastMessage.status",
+                },
+                unreadCount: 1,
+            },
+        },
+    ]);
+    res.json(chats);
+});
+app.get("/messages/:contactEmail", verifyToken, async (req, res) => {
+    const me = await schema_1.UserModel.findById(req.user.id);
+    const them = await schema_1.UserModel.findOne({ email: req.params.contactEmail });
+    if (!me || !them)
+        return res.status(404).json({ error: "User not found" });
+    const msgs = await schema_1.MessageModel.find({
+        $or: [
+            { sender: me._id, receiver: them._id },
+            { sender: them._id, receiver: me._id },
+        ],
+    }).sort({ timestamp: 1 });
+    const enriched = msgs.map(m => ({
+        _id: m._id,
+        text: m.text,
+        timestamp: m.timestamp,
+        status: m.status,
+        senderEmail: String(m.sender) === String(me._id) ? me.email : them.email,
+        receiverEmail: String(m.receiver) === String(me._id) ? me.email : them.email
+    }));
+    res.json(enriched);
+});
+// ===== WEBSOCKET =====
 wss.on("connection", (ws) => {
     console.log("New WS connection");
-    ws.on("message", async (msg) => {
+    ws.on("message", async (raw) => {
         try {
-            const data = JSON.parse(msg.toString());
-            // User joins socket
+            const data = JSON.parse(raw.toString());
             if (data.type === "join") {
-                // @ts-ignore
-                ws.userId = data.userId;
-                onlineUsers.set(data.userId, ws);
-                await schema_1.UserModel.findByIdAndUpdate(data.userId, { status: "online" });
-                console.log(`User ${data.userId} is now online`);
-                // Send queued messages
+                onlineUsers.set(data.email, ws);
+                const user = await schema_1.UserModel.findOne({ email: data.email });
+                if (user) {
+                    user.status = "online";
+                    await user.save();
+                }
                 const undelivered = await schema_1.MessageModel.find({
-                    receiver: data.userId,
-                    status: "sent",
-                });
-                undelivered.forEach((message) => {
-                    sendJSON(ws, { type: "receiveMessage", message });
-                    message.status = "delivered";
-                    message.save();
-                });
-            }
-            // Sending a message
-            if (data.type === "sendMessage") {
-                const { senderId, receiverId, text } = data;
-                const message = await schema_1.MessageModel.create({
-                    sender: senderId,
-                    receiver: receiverId,
-                    text,
-                    timestamp: new Date(),
-                    status: onlineUsers.has(receiverId) ? "delivered" : "sent",
-                });
-                if (onlineUsers.has(receiverId)) {
-                    sendJSON(onlineUsers.get(receiverId), {
-                        type: "receiveMessage",
-                        message,
-                    });
+                    receiver: user?._id, status: "sent"
+                }).populate("sender receiver", "email name profilePicUrl");
+                for (const msg of undelivered) {
+                    const enriched = {
+                        _id: msg._id,
+                        text: msg.text,
+                        timestamp: msg.timestamp,
+                        status: msg.status,
+                        senderEmail: msg.sender.email,
+                        receiverEmail: msg.receiver.email,
+                        senderName: msg.sender.name,
+                        receiverName: msg.receiver.name,
+                        senderProfilePicUrl: msg.sender.profilePicUrl,
+                        receiverProfilePicUrl: msg.receiver.profilePicUrl,
+                    };
+                    sendJSON(ws, { type: "receiveMessage", message: enriched });
+                    msg.status = "delivered";
+                    await msg.save();
                 }
             }
-            // Mark messages as read
+            if (data.type === "sendMessage") {
+                const sender = await schema_1.UserModel.findOne({ email: data.senderEmail });
+                const receiver = await schema_1.UserModel.findOne({ email: data.receiverEmail });
+                if (!sender || !receiver)
+                    return;
+                const message = await schema_1.MessageModel.create({
+                    sender: sender._id,
+                    receiver: receiver._id,
+                    text: data.text,
+                    timestamp: new Date(),
+                    status: onlineUsers.has(receiver.email) ? "delivered" : "sent",
+                });
+                const enriched = {
+                    _id: message._id,
+                    text: message.text,
+                    timestamp: message.timestamp,
+                    status: message.status,
+                    senderEmail: sender.email,
+                    receiverEmail: receiver.email,
+                    senderName: sender.name,
+                    receiverName: receiver.name,
+                    senderProfilePicUrl: sender.profilePicUrl,
+                    receiverProfilePicUrl: receiver.profilePicUrl,
+                };
+                const receiverWS = onlineUsers.get(receiver.email);
+                if (receiverWS)
+                    sendJSON(receiverWS, { type: "receiveMessage", message: enriched });
+                const senderWS = onlineUsers.get(sender.email);
+                if (senderWS)
+                    sendJSON(senderWS, { type: "receiveMessage", message: enriched });
+            }
             if (data.type === "markAsRead") {
-                await schema_1.MessageModel.updateMany({
-                    sender: data.senderId,
-                    receiver: data.receiverId,
-                    status: "delivered",
-                }, { $set: { status: "read" } });
+                const sender = await schema_1.UserModel.findOne({ email: data.senderEmail });
+                const receiver = await schema_1.UserModel.findOne({ email: data.receiverEmail });
+                if (!sender || !receiver)
+                    return;
+                await schema_1.MessageModel.updateMany({ sender: sender._id, receiver: receiver._id, status: "delivered" }, { $set: { status: "read" } });
+                const chatId = [data.senderEmail, data.receiverEmail].sort().join("-");
+                const senderWS = onlineUsers.get(sender.email);
+                const receiverWS = onlineUsers.get(receiver.email);
+                if (senderWS)
+                    sendJSON(senderWS, { type: "markAsRead", chatId });
+                if (receiverWS)
+                    sendJSON(receiverWS, { type: "markAsRead", chatId });
             }
         }
         catch (err) {
@@ -165,24 +248,28 @@ wss.on("connection", (ws) => {
         }
     });
     ws.on("close", async () => {
-        if (ws.userId) {
-            onlineUsers.delete(ws.userId);
-            await schema_1.UserModel.findByIdAndUpdate(ws.userId, { status: "offline" });
-            console.log(`User ${ws.userId} disconnected`);
+        for (const [email, sock] of onlineUsers.entries()) {
+            if (sock === ws) {
+                onlineUsers.delete(email);
+                const user = await schema_1.UserModel.findOne({ email });
+                if (user) {
+                    user.status = "offline";
+                    await user.save();
+                }
+                break;
+            }
         }
+        console.log("WS Disconnected");
     });
 });
-// ===== Start Server =====
 (async function main() {
     try {
         await mongoose_1.default.connect(process.env.DB_URL);
         console.log("Database Connected");
-        server.listen(process.env.PORT || 8080, () => {
-            console.log(`Server running on port ${process.env.PORT || 8080}`);
-        });
+        server.listen(process.env.PORT || 8080, () => console.log(`Server running on port ${process.env.PORT || 8080}`));
     }
     catch (e) {
-        console.log("Could Not connect to Database", e);
+        console.error("Could not connect to database", e);
     }
 })();
 //# sourceMappingURL=index.js.map

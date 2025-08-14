@@ -4,6 +4,7 @@ exports.MessageModel = exports.ContactModel = exports.UserModel = void 0;
 const mongoose_1 = require("mongoose");
 const messageStatusTypes = ["sent", "delivered", "read"];
 const statusType = ["offline", "online"];
+// ===== User Schema =====
 const userSchema = new mongoose_1.Schema({
     name: {
         type: String,
@@ -26,10 +27,10 @@ const userSchema = new mongoose_1.Schema({
         enum: statusType
     }
 }, { timestamps: true });
-// Contact Schema
+// ===== Contact Schema =====
 const contactSchema = new mongoose_1.Schema({
     owner: {
-        type: mongoose_1.Schema.Types.ObjectId, // The logged-in user who owns this contact list
+        type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
@@ -49,7 +50,7 @@ const contactSchema = new mongoose_1.Schema({
         default: false,
     },
     linkedUser: {
-        type: mongoose_1.Schema.Types.ObjectId, // If the contact is also a WhatsApp user
+        type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         default: null,
     },
@@ -58,12 +59,23 @@ const contactSchema = new mongoose_1.Schema({
         default: false,
     },
 }, { timestamps: true });
+contactSchema.pre('save', async function (next) {
+    const User = (0, mongoose_1.model)('User');
+    if (this.email) {
+        const matchedUser = await User.findOne({ email: this.email });
+        if (matchedUser) {
+            this.linkedUser = matchedUser._id;
+            this.isOnWhatsApp = true;
+            this.profilePicUrl = matchedUser.profilePicUrl || this.profilePicUrl;
+        }
+        else {
+            this.isOnWhatsApp = false;
+        }
+    }
+    next();
+});
+// ===== Message Schema =====
 const messageSchema = new mongoose_1.Schema({
-    // waMessageId: { // id from webhook
-    //     type: String,
-    //     required: true,
-    //     unique: true
-    // },
     sender: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
@@ -76,7 +88,7 @@ const messageSchema = new mongoose_1.Schema({
     },
     text: {
         type: String,
-        required: false // could be media instead
+        required: false
     },
     type: {
         type: String,
@@ -93,30 +105,10 @@ const messageSchema = new mongoose_1.Schema({
         default: "sent"
     }
 }, { timestamps: true });
-contactSchema.pre('save', async function (next) {
-    const Contact = this.constructor;
-    const User = (0, mongoose_1.model)('User');
-    // If phoneNumber or email matches a registered user, link them
-    if (this.email) {
-        const matchedUser = await User.findOne({
-            $or: [
-                { email: this.email }
-            ],
-        });
-        if (matchedUser) {
-            this.linkedUser = matchedUser._id;
-            this.isOnWhatsApp = true;
-            this.profilePicUrl = matchedUser.profilePicUrl || this.profilePicUrl;
-        }
-        else {
-            this.isOnWhatsApp = false;
-        }
-    }
-    next();
-});
+// ===== Models =====
 const UserModel = (0, mongoose_1.model)('User', userSchema);
 exports.UserModel = UserModel;
-const MessageModel = (0, mongoose_1.model)('Processed_Message', messageSchema);
+const MessageModel = (0, mongoose_1.model)('Processed_Message', messageSchema); // original name restored
 exports.MessageModel = MessageModel;
 const ContactModel = (0, mongoose_1.model)('Contact', contactSchema);
 exports.ContactModel = ContactModel;
