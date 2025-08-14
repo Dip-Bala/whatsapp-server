@@ -4,18 +4,14 @@ const messageStatusTypes : string[] = ["sent" , "delivered" , "read"];
 const statusType : string[] = ["offline", "online"];
 
 const userSchema = new Schema({
-    // wa_id: {
-    //     type: String,
-    //     required: true,
-    //     unique: true
-    // },
-    name: { // Profile name from webhook
+    name: { 
         type: String,
         required: false
     },
     email: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     profilePicUrl: { 
         type: String
@@ -26,8 +22,7 @@ const userSchema = new Schema({
     },
     status : {
         type: String,
-        enum: statusType,
-        required : true
+        enum: statusType
     }
 }, { timestamps: true });
 

@@ -5,18 +5,14 @@ const mongoose_1 = require("mongoose");
 const messageStatusTypes = ["sent", "delivered", "read"];
 const statusType = ["offline", "online"];
 const userSchema = new mongoose_1.Schema({
-    // wa_id: {
-    //     type: String,
-    //     required: true,
-    //     unique: true
-    // },
     name: {
         type: String,
         required: false
     },
     email: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     profilePicUrl: {
         type: String
@@ -27,8 +23,7 @@ const userSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: statusType,
-        required: true
+        enum: statusType
     }
 }, { timestamps: true });
 // Contact Schema

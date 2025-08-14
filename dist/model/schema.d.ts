@@ -5,18 +5,18 @@ declare const UserModel: import("mongoose").Model<{
 } & {
     email: string;
     createdAt: NativeDate;
-    status: string;
     name?: string | null;
     profilePicUrl?: string | null;
+    status?: string | null;
 }, {}, {}, {}, import("mongoose").Document<unknown, {}, {
     createdAt: NativeDate;
     updatedAt: NativeDate;
 } & {
     email: string;
     createdAt: NativeDate;
-    status: string;
     name?: string | null;
     profilePicUrl?: string | null;
+    status?: string | null;
 }, {}, {
     timestamps: true;
 }> & {
@@ -25,9 +25,9 @@ declare const UserModel: import("mongoose").Model<{
 } & {
     email: string;
     createdAt: NativeDate;
-    status: string;
     name?: string | null;
     profilePicUrl?: string | null;
+    status?: string | null;
 } & {
     _id: import("mongoose").Types.ObjectId;
 } & {
@@ -40,18 +40,18 @@ declare const UserModel: import("mongoose").Model<{
 } & {
     email: string;
     createdAt: NativeDate;
-    status: string;
     name?: string | null;
     profilePicUrl?: string | null;
+    status?: string | null;
 }, import("mongoose").Document<unknown, {}, import("mongoose").FlatRecord<{
     createdAt: NativeDate;
     updatedAt: NativeDate;
 } & {
     email: string;
     createdAt: NativeDate;
-    status: string;
     name?: string | null;
     profilePicUrl?: string | null;
+    status?: string | null;
 }>, {}, import("mongoose").ResolveSchemaOptions<{
     timestamps: true;
 }>> & import("mongoose").FlatRecord<{
@@ -60,9 +60,9 @@ declare const UserModel: import("mongoose").Model<{
 } & {
     email: string;
     createdAt: NativeDate;
-    status: string;
     name?: string | null;
     profilePicUrl?: string | null;
+    status?: string | null;
 }> & {
     _id: import("mongoose").Types.ObjectId;
 } & {
