@@ -111,11 +111,38 @@ const messageSchema = new Schema({
     enum: messageStatusTypes,
     default: "sent"
   }
+
 }, { timestamps: true });
 
-// ===== Models =====
-const UserModel = model('User', userSchema);
-const MessageModel = model('Processed_Message', messageSchema); // original name restored
-const ContactModel = model('Contact', contactSchema);
 
-export { UserModel, ContactModel, MessageModel };
+// export interface IChat extends Document {
+//   participants: string[];
+//   lastMessage?: {
+//     text: string;
+//     timestamp: Date;
+//     status: string;
+//     senderEmail: string;
+//   };
+//   unreadCount: Object
+// }
+
+const ChatSchema = new Schema({
+  participants: { type: [String], required: true },
+  lastMessage: {
+    text: String,
+    timestamp: Date,
+    status: String,
+    senderEmail: String,
+  },
+  unreadCount: {
+  type: Object,
+  default: {},
+}
+
+});
+
+const UserModel = model('User', userSchema);
+const MessageModel = model('Processed_Message', messageSchema); 
+const ContactModel = model('Contact', contactSchema);
+const ChatModel = model("Chat", ChatSchema);
+export { UserModel, ContactModel, MessageModel, ChatModel };

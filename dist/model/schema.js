@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MessageModel = exports.ContactModel = exports.UserModel = void 0;
+exports.ChatModel = exports.MessageModel = exports.ContactModel = exports.UserModel = void 0;
 const mongoose_1 = require("mongoose");
 const messageStatusTypes = ["sent", "delivered", "read"];
 const statusType = ["offline", "online"];
@@ -105,11 +105,35 @@ const messageSchema = new mongoose_1.Schema({
         default: "sent"
     }
 }, { timestamps: true });
-// ===== Models =====
+// export interface IChat extends Document {
+//   participants: string[];
+//   lastMessage?: {
+//     text: string;
+//     timestamp: Date;
+//     status: string;
+//     senderEmail: string;
+//   };
+//   unreadCount: Object
+// }
+const ChatSchema = new mongoose_1.Schema({
+    participants: { type: [String], required: true },
+    lastMessage: {
+        text: String,
+        timestamp: Date,
+        status: String,
+        senderEmail: String,
+    },
+    unreadCount: {
+        type: Object,
+        default: {},
+    }
+});
 const UserModel = (0, mongoose_1.model)('User', userSchema);
 exports.UserModel = UserModel;
-const MessageModel = (0, mongoose_1.model)('Processed_Message', messageSchema); // original name restored
+const MessageModel = (0, mongoose_1.model)('Processed_Message', messageSchema);
 exports.MessageModel = MessageModel;
 const ContactModel = (0, mongoose_1.model)('Contact', contactSchema);
 exports.ContactModel = ContactModel;
+const ChatModel = (0, mongoose_1.model)("Chat", ChatSchema);
+exports.ChatModel = ChatModel;
 //# sourceMappingURL=schema.js.map

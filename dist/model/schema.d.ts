@@ -224,5 +224,68 @@ declare const ContactModel: import("mongoose").Model<{
 } & {
     __v: number;
 }>>;
-export { UserModel, ContactModel, MessageModel };
+declare const ChatModel: import("mongoose").Model<{
+    participants: string[];
+    unreadCount: any;
+    lastMessage?: {
+        text?: string | null;
+        status?: string | null;
+        timestamp?: NativeDate | null;
+        senderEmail?: string | null;
+    } | null;
+}, {}, {}, {}, import("mongoose").Document<unknown, {}, {
+    participants: string[];
+    unreadCount: any;
+    lastMessage?: {
+        text?: string | null;
+        status?: string | null;
+        timestamp?: NativeDate | null;
+        senderEmail?: string | null;
+    } | null;
+}, {}, import("mongoose").DefaultSchemaOptions> & {
+    participants: string[];
+    unreadCount: any;
+    lastMessage?: {
+        text?: string | null;
+        status?: string | null;
+        timestamp?: NativeDate | null;
+        senderEmail?: string | null;
+    } | null;
+} & {
+    _id: import("mongoose").Types.ObjectId;
+} & {
+    __v: number;
+}, Schema<any, import("mongoose").Model<any, any, any, any, any, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, {
+    participants: string[];
+    unreadCount: any;
+    lastMessage?: {
+        text?: string | null;
+        status?: string | null;
+        timestamp?: NativeDate | null;
+        senderEmail?: string | null;
+    } | null;
+}, import("mongoose").Document<unknown, {}, import("mongoose").FlatRecord<{
+    participants: string[];
+    unreadCount: any;
+    lastMessage?: {
+        text?: string | null;
+        status?: string | null;
+        timestamp?: NativeDate | null;
+        senderEmail?: string | null;
+    } | null;
+}>, {}, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & import("mongoose").FlatRecord<{
+    participants: string[];
+    unreadCount: any;
+    lastMessage?: {
+        text?: string | null;
+        status?: string | null;
+        timestamp?: NativeDate | null;
+        senderEmail?: string | null;
+    } | null;
+}> & {
+    _id: import("mongoose").Types.ObjectId;
+} & {
+    __v: number;
+}>>;
+export { UserModel, ContactModel, MessageModel, ChatModel };
 //# sourceMappingURL=schema.d.ts.map
